@@ -738,27 +738,36 @@ class _CategoryGridViewState extends ConsumerState<_CategoryGridView> {
       );
     }
 
-    return ReorderableGridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1,
-      ),
-      itemCount: topLevelCategories.length,
-      onReorder: (oldIndex, newIndex) {
-        _onReorderTopLevel(oldIndex, newIndex, topLevelCategories);
-      },
-      itemBuilder: (context, index) {
-        final item = topLevelCategories[index];
-        return _CategoryCard(
-          key: ValueKey(item.category.id),
-          item: item,
-          onTap: () => _onCategoryTap(item),
-        );
-      },
-    );
+    return LayoutBuilder(builder: (context, box) {
+      // 与记一笔页的分类网格同规则:列数自适应(移动端 ~4 列,桌面宽窗口最多 10 列),
+      // 目标单元格宽约 100px,避免宽窗口下 4 列卡片过于松散。
+      final double availW = (box.maxWidth - 32).clamp(0.0, double.infinity);
+      final int columns = (availW / 100).floor().clamp(4, 10);
+      final double cellW = (availW - 10 * (columns - 1)) / columns;
+      const double cellH = 86.0; // icon 32 + 文本/计数行 + 卡片内边距余量
+
+      return ReorderableGridView.builder(
+        padding: const EdgeInsets.all(16),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: columns,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: cellW / cellH,
+        ),
+        itemCount: topLevelCategories.length,
+        onReorder: (oldIndex, newIndex) {
+          _onReorderTopLevel(oldIndex, newIndex, topLevelCategories);
+        },
+        itemBuilder: (context, index) {
+          final item = topLevelCategories[index];
+          return _CategoryCard(
+            key: ValueKey(item.category.id),
+            item: item,
+            onTap: () => _onCategoryTap(item),
+          );
+        },
+      );
+    });
   }
 
   Future<void> _onReorderTopLevel(int oldIndex, int newIndex, List<_CategoryItem> topLevelCategories) async {

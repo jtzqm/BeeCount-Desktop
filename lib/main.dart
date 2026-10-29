@@ -45,6 +45,18 @@ final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>()
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // 桌面端安全网:部分仅移动端(iOS/Android)原生插件未编译进桌面产物,运行时调用
+  // 会抛 MissingPluginException / PlatformException。这里统一兜底——只记录日志,
+  // 不让任何遗留的插件调用把整个 App 打崩(配合下方 runZonedGuarded 覆盖异步路径)。
+  FlutterError.onError = (details) {
+    final e = details.exception;
+    if (e is MissingPluginException || e is PlatformException) {
+      debugPrint('[platform-guard] 忽略不支持平台的插件调用: $e');
+      return;
+    }
+    FlutterError.presentError(details);
+  };
+
   // Edge-to-edge:让 Flutter 自己把内容(PrimaryHeader/皮肤)画到状态栏底下,
   // 而不是请求系统给状态栏刷色 —— 后者在部分 OEM(华为 EMUI/鸿蒙)上会被无视,
   // 导致 header 背景无法渗透到状态栏。iOS 本来就是全屏布局,不受影响。
@@ -155,10 +167,21 @@ Future<void> main() async {
   // 执行,失败不致命。
   unawaited(_runOrphanFileGcOnce(container));
 
-  runApp(ProviderScope(
-    parent: container,
-    child: const MainApp(),
-  ));
+  // 用 Zone 兜住运行期未捕获的异步异常:任何未被 try/catch 包住的移动端插件调用
+  // (如用户点按触发的 image_picker / record / 通知等)抛出的 MissingPluginException
+  // 都会被这里拦下记日志,而不是让整个 Flutter 应用崩溃。
+  runZonedGuarded<void>(() {
+    runApp(ProviderScope(
+      parent: container,
+      child: const MainApp(),
+    ));
+  }, (error, stack) {
+    if (error is MissingPluginException || error is PlatformException) {
+      debugPrint('[platform-guard] 忽略异步插件调用(不支持当前平台): $error');
+      return;
+    }
+    FlutterError.reportError(FlutterErrorDetails(exception: error, stack: stack));
+  });
 }
 
 /// Provider observer to update widget on app start

@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:quick_actions/quick_actions.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -37,6 +39,14 @@ class QuickActionsService {
   void initialize() {
     if (_isInitialized) {
       logger.warning(_tag, '服务已初始化，跳过');
+      return;
+    }
+
+    // 桌面端(Windows/Linux/macOS/Web)与 quick_actions 不兼容:该插件仅支持
+    // Android / iOS 原生快捷方式,运行时调用会抛 MissingPluginException。
+    // 这里直接在入口跳过初始化,避免应用启动时崩溃。
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
+      logger.info(_tag, '当前平台不支持快捷操作(仅 Android/iOS),跳过初始化');
       return;
     }
 

@@ -112,7 +112,15 @@ class _CategorySelectorState extends ConsumerState<CategorySelector> {
     // → FutureBuilder 拿到新 Future → 重查 SharedLedgerCategories。否则 A
     // 在 web/mobile 改分类名,B 这边 picker 永远显示旧名,要重启 app。
     ref.watch(sharedResourceRefreshProvider);
-    return FutureBuilder<List<Category>>(
+    return LayoutBuilder(builder: (context, box) {
+      // 紧凑网格:列数随可用宽度自适应(移动端 ~4 列不变,桌面宽窗口最多 10 列),
+      // 目标单元格宽约 100px;同步收紧图标与间距,避免宽窗口下 4 列大图标显松散。
+      final double availW = (box.maxWidth - 24).clamp(0.0, double.infinity);
+      final int columns = (availW / 100).floor().clamp(4, 10);
+      final double cellW =
+          (availW - 10 * (columns - 1)) / columns; // 与下方 spacing 保持一致
+      const double cellH = 68.0; // icon 44 + gap 6 + 文本行 ~17 (+1 余量)
+      return FutureBuilder<List<Category>>(
       future: _loadFilteredTopLevel(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
@@ -176,9 +184,10 @@ class _CategorySelectorState extends ConsumerState<CategorySelector> {
             // 构建显示项列表：网格行 + 可能的二级分类容器
             final displayItems = <Widget>[];
 
-            // 按每4个一组显示一级分类
-            for (int i = 0; i < topLevelCategories.length; i += 4) {
-              final endIndex = (i + 4).clamp(0, topLevelCategories.length);
+            // 按每 columns 个一组显示一级分类
+            for (int i = 0; i < topLevelCategories.length; i += columns) {
+              final endIndex =
+                  (i + columns).clamp(0, topLevelCategories.length);
               final rowItems = topLevelCategories.sublist(i, endIndex);
 
               // 为该行第一个分类创建key（用于滚动定位）
@@ -192,11 +201,11 @@ class _CategorySelectorState extends ConsumerState<CategorySelector> {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   padding: EdgeInsets.zero,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 4,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 0.9,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: columns,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    childAspectRatio: cellW / cellH,
                   ),
                   itemCount: rowItems.length,
                   itemBuilder: (context, index) {
@@ -242,7 +251,7 @@ class _CategorySelectorState extends ConsumerState<CategorySelector> {
 
                 if (_expandedCategoryId == topCat.id && hasChildren) {
                   displayItems.add(
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                   );
                   displayItems.add(
                     _SubcategorySelectorCard(
@@ -259,8 +268,8 @@ class _CategorySelectorState extends ConsumerState<CategorySelector> {
                 }
               }
 
-              if (i + 4 < topLevelCategories.length) {
-                displayItems.add(const SizedBox(height: 16));
+              if (i + columns < topLevelCategories.length) {
+                displayItems.add(const SizedBox(height: 10));
               }
             }
 
@@ -276,7 +285,8 @@ class _CategorySelectorState extends ConsumerState<CategorySelector> {
           },
         );
       },
-    );
+      );
+    });
   }
 
   Future<void> _createCategory() async {
@@ -385,46 +395,54 @@ class _SubcategorySelectorCard extends ConsumerWidget {
     final primaryColor = Theme.of(context).colorScheme.primary;
     final isDark = BeeTokens.isDark(context);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: BeeTokens.surfacePopoverCard(context),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: isDark
-            ? null
-            : [
-                BoxShadow(
-                  color: primaryColor.withValues(alpha: 0.15),
-                  blurRadius: 8,
-                  spreadRadius: 1,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-        border: isDark ? Border.all(color: BeeTokens.border(context)) : null,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 0.9,
-          ),
-          itemCount: subCategories.length,
-          itemBuilder: (context, index) {
-            final subCat = subCategories[index];
-            return _CategoryItem(
-              category: subCat,
-              selected: selectedId == subCat.id,
-              isSubCategory: true,
-              onTap: () => onSubCategoryTap(subCat),
-            );
-          },
+    return LayoutBuilder(builder: (context, box) {
+      // 与一级网格同规则:列数自适应 + 紧凑尺寸,保持视觉一致
+      final double availW = (box.maxWidth - 24).clamp(0.0, double.infinity);
+      final int columns = (availW / 100).floor().clamp(4, 10);
+      final double cellW = (availW - 8 * (columns - 1)) / columns;
+      const double cellH = 60.0; // icon 38 + gap 6 + 文本行 ~15 (+1 余量)
+
+      return Container(
+        decoration: BoxDecoration(
+          color: BeeTokens.surfacePopoverCard(context),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: primaryColor.withValues(alpha: 0.15),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+          border: isDark ? Border.all(color: BeeTokens.border(context)) : null,
         ),
-      ),
-    );
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: cellW / cellH,
+            ),
+            itemCount: subCategories.length,
+            itemBuilder: (context, index) {
+              final subCat = subCategories[index];
+              return _CategoryItem(
+                category: subCat,
+                selected: selectedId == subCat.id,
+                isSubCategory: true,
+                onTap: () => onSubCategoryTap(subCat),
+              );
+            },
+          ),
+        ),
+      );
+    });
   }
 }
 
@@ -461,8 +479,8 @@ class _CategoryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 二级分类使用较小的图标和缩进
-    final iconSize = isSubCategory ? 48.0 : 56.0;
+    // 二级分类使用较小的图标和缩进(紧凑版:一级 44 / 二级 38)
+    final iconSize = isSubCategory ? 38.0 : 44.0;
     final fontSize = isSubCategory ? 11.0 : 12.0;
     final primaryColor = Theme.of(context).colorScheme.primary;
 
@@ -488,18 +506,18 @@ class _CategoryItem extends StatelessWidget {
                 ),
                 child: _buildIcon(
                   context,
-                  isSubCategory ? 20 : 24,
+                  isSubCategory ? 17 : 20,
                   selected ? primaryColor : BeeTokens.iconCategory(context),
                 ),
               ),
               // 有子分类时在图标右下角显示三个点（完全分开，不重叠）
               if (hasChildren && !isSubCategory)
                 Positioned(
-                  right: -6,
-                  bottom: -6,
+                  right: -4,
+                  bottom: -4,
                   child: Container(
-                    width: 20,
-                    height: 20,
+                    width: 17,
+                    height: 17,
                     decoration: BoxDecoration(
                       color: selected
                           ? primaryColor.withValues(alpha: 0.25)
@@ -513,7 +531,7 @@ class _CategoryItem extends StatelessWidget {
                     child: Center(
                       child: Icon(
                         Icons.more_horiz,
-                        size: 14,
+                        size: 11,
                         color: selected
                             ? primaryColor
                             : BeeTokens.iconCategory(context),
@@ -523,7 +541,7 @@ class _CategoryItem extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             CategoryUtils.getDisplayName(category.name, context),
             maxLines: 1,

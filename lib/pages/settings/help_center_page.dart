@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -44,6 +45,8 @@ class _HelpCenterPageState extends ConsumerState<HelpCenterPage> {
   String _url = '';
   int _progress = 0;
   bool _failed = false;
+  // 当前平台不支持内嵌 WebView(Windows/Linux/Web)时置位,改用系统浏览器兜底
+  bool _unsupported = false;
   // 仅 iOS 用:当前是否离开了文档首页(驱动动态 canPop)。
   // 不能用 canGoBack() 判断 —— 真机实测回到文档首页后 WKWebView 历史栈里
   // 仍有冗余条目(重定向/replaceState 噪音),canGoBack 永远 true,页面退不出去。
@@ -70,6 +73,19 @@ class _HelpCenterPageState extends ConsumerState<HelpCenterPage> {
     super.didChangeDependencies();
     // 初始化需要 context(locale / 暗黑 / 主题色),放 didChangeDependencies 首跑
     if (_controller != null) return;
+    // 桌面端(Windows/Linux/Web)与 webview_flutter 不兼容:该插件无 Windows/Linux
+    // 原生实现,构造 WebViewController 会抛 MissingPluginException。直接走兜底
+    // UI(提示用系统浏览器打开),避免进入页面即崩溃。
+    if (kIsWeb ||
+        (!Platform.isAndroid && !Platform.isIOS && !Platform.isMacOS)) {
+      if (mounted) {
+        setState(() {
+          _unsupported = true;
+          _failed = true;
+        });
+      }
+      return;
+    }
     final locale = Localizations.localeOf(context);
     _url = widget.initialUrl ??
         WebsiteUrls.docsEmbed(
@@ -201,17 +217,18 @@ class _HelpCenterPageState extends ConsumerState<HelpCenterPage> {
                                 color: BeeTokens.textSecondary(context)),
                           ),
                           const SizedBox(height: 16),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: primary),
-                            onPressed: () {
-                              setState(() => _failed = false);
-                              _controller?.reload();
-                            },
-                            child: Text(l10n.helpCenterRetry,
-                                style:
-                                    const TextStyle(color: Colors.white)),
-                          ),
+                          if (!_unsupported)
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: primary),
+                              onPressed: () {
+                                setState(() => _failed = false);
+                                _controller?.reload();
+                              },
+                              child: Text(l10n.helpCenterRetry,
+                                  style:
+                                      const TextStyle(color: Colors.white)),
+                            ),
                           TextButton(
                             onPressed: _openInBrowser,
                             child: Text(l10n.helpCenterOpenInBrowser,

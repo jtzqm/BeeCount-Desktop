@@ -1,4 +1,49 @@
+<div align="center">
+
+# 蜜蜂记账 Windows 桌面版 · BeeCount Desktop
+
+</div>
+
+## 📌 二次开发声明
+
+> **本项目基于 [TNT-Likely/BeeCount](https://github.com/TNT-Likely/BeeCount) 进行二次开发。**
+>
+> [蜜蜂记账 BeeCount](https://github.com/TNT-Likely/BeeCount) 是一款优秀的开源记账应用，但**官方目前仅提供 Android / iOS 移动端，没有电脑（桌面）版本**。本项目利用 Flutter 桌面能力**填补了这个空白**，将蜜蜂记账带到 Windows 平台。
+>
+> - **上游项目**：<https://github.com/TNT-Likely/BeeCount>（作者 [@TNT-Likely](https://github.com/TNT-Likely)）
+> - **改动范围**：仅做 Windows 桌面适配与界面紧凑化，**未改动任何核心记账逻辑与数据格式**，详见下方改动清单
+> - **许可协议**：遵循《BeeCount 软件许可协议 v1.0》（见 [LICENSE](LICENSE)，未做任何删改）——个人/非商业使用免费、允许修改分发、修改版须保持开源。本仓库公开即为遵守该协议，原始版权声明完整保留
+> - 感谢原作者 [@TNT-Likely](https://github.com/TNT-Likely) 的优秀作品 💝 请到[官方仓库](https://github.com/TNT-Likely/BeeCount)支持原项目
+
+## 🔧 Windows 桌面适配改动清单
+
+| # | 改动 | 说明 |
+|---|------|------|
+| 1 | 启用 Windows 桌面平台 | `flutter create --platforms=windows` 生成原生 runner |
+| 2 | 应用图标 | 以蜜蜂图标生成 16~256px 七档 `.ico`，替换默认 Flutter 图标 |
+| 3 | 启动崩溃修复 | `QuickActionsService` 仅在移动端初始化，桌面端安全跳过 |
+| 4 | WebView 页面降级 | 隐私政策/帮助中心在桌面端改为系统浏览器打开（`webview_flutter` 无 Windows 后端） |
+| 5 | 海报保存适配 | 桌面端"保存到相册"改为写入下载文件夹 |
+| 6 | 全局异常安全网 | 未适配的移动端插件调用记录日志而非崩溃 |
+| 7 | 界面紧凑化 | 记一笔分类网格、分类管理、图标选择器按窗口宽度自适应列数（4~14 列），适配宽屏 |
+
+## 🏗️ Windows 构建方法
+
+```bat
+:: 前置：Flutter 3.27+ / Visual Studio 2022「使用 C++ 的桌面开发」/ 开发者模式
+cd BeeCount
+flutter pub get
+flutter build windows --release
+:: 产物：build\windows\x64\runner\Release\beecount.exe（分发请打包整个 Release 目录）
+```
+
+---
+
+<div align="center">
+
 # 蜜蜂记账(BeeCount) &nbsp; [English](README_EN.md)
+
+</div>
 
 > 🧪 **[4.x 内测：下载 Android 安装包、查看注意事项与反馈问题](https://github.com/TNT-Likely/BeeCount/issues/580)**
 

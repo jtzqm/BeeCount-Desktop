@@ -1449,71 +1449,78 @@ class _GroupedIconGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final iconGroups = _getIconGroups(AppLocalizations.of(context));
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: iconGroups.map((group) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                group.title,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-            ),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 6,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                childAspectRatio: 1,
-              ),
-              itemCount: group.icons.length,
-              itemBuilder: (context, index) {
-                final iconData = group.icons[index];
-                final isSelected = selectedIcon == iconData.key;
+    return LayoutBuilder(builder: (context, box) {
+      // 紧凑图标选择网格:列数随宽度自适应(移动端 ~6 列,桌面宽窗口最多 14 列),
+      // 目标单元格宽约 48px。
+      final double availW = box.maxWidth.clamp(0.0, double.infinity);
+      final int columns = (availW / 48).floor().clamp(6, 14);
 
-                return InkWell(
-                  onTap: () => onIconSelected(iconData.key),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.1)
-                          : null,
-                      border: Border.all(
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: iconGroups.map((group) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  group.title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: 1,
+                ),
+                itemCount: group.icons.length,
+                itemBuilder: (context, index) {
+                  final iconData = group.icons[index];
+                  final isSelected = selectedIcon == iconData.key;
+
+                  return InkWell(
+                    onTap: () => onIconSelected(iconData.key),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.1)
+                            : null,
+                        border: Border.all(
+                          color: isSelected
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.grey.withValues(alpha: 0.3),
+                          width: isSelected ? 2 : 1,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        iconData.iconData,
+                        size: 20,
                         color: isSelected
                             ? Theme.of(context).colorScheme.primary
-                            : Colors.grey.withValues(alpha: 0.3),
-                        width: isSelected ? 2 : 1,
+                            : Theme.of(context).iconTheme.color,
                       ),
-                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(
-                      iconData.iconData,
-                      size: 20,
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).iconTheme.color,
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-          ],
-        );
-      }).toList(),
-    );
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          );
+        }).toList(),
+      );
+    });
   }
 
   List<_IconGroup> _getIconGroups(AppLocalizations l10n) {

@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import '../../utils/app_localizations_resolver.dart';
@@ -90,6 +91,17 @@ class SharePosterService {
   /// 保存海报到相册
   static Future<SavePosterResult> savePosterToGallery(Uint8List imageBytes) async {
     try {
+      // 桌面端(Linux/Windows/macOS/Web)无系统相册,Gal 也未适配,这里改为
+      // 把 PNG 写到「下载」文件夹,避免 MissingPluginException 导致保存失败。
+      if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
+        final dir = await getDownloadsDirectory();
+        final base = dir?.path ?? (await getTemporaryDirectory()).path;
+        final fileName =
+            'beecount_poster_${DateTime.now().millisecondsSinceEpoch}.png';
+        final file = File('$base${Platform.pathSeparator}$fileName');
+        await file.writeAsBytes(imageBytes);
+        return SavePosterResult.success;
+      }
       // 使用 Gal 保存图片，会自动处理权限
       await Gal.putImageBytes(imageBytes);
       return SavePosterResult.success;
